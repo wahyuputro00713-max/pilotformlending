@@ -1,6 +1,6 @@
 /**
  * ==============================================================================
- * Web Form Logic & Google Sheets Multi-Pulau Integrator
+ * Web Form Logic & Google Sheets Multi-Pulau Integrator (Form Only Focus)
  * ==============================================================================
  */
 
@@ -17,8 +17,6 @@ const REGIONAL_PRESETS = {
 
 // Application State
 const state = {
-  records: [],
-  activeTab: "ALL",
   webhookUrl: localStorage.getItem("leads_webhook_url") || "",
   spreadsheetUrl: "https://docs.google.com/spreadsheets/d/1q8RSMvbPEGhSNjY7Vq91B6RZvrNZ7eK966EGiZCbjM0/edit"
 };
@@ -26,11 +24,7 @@ const state = {
 // Initialize Application
 document.addEventListener("DOMContentLoaded", () => {
   initDefaults();
-  loadStoredRecords();
   setupEventListeners();
-  renderStats();
-  renderTabs();
-  renderTable();
   updateTargetSheetBadge();
 });
 
@@ -48,64 +42,6 @@ function initDefaults() {
   }
 
   updateWebhookStatusBadge();
-}
-
-// Load Stored Records from LocalStorage
-function loadStoredRecords() {
-  try {
-    const stored = localStorage.getItem("tracker_leads_records");
-    if (stored) {
-      state.records = JSON.parse(stored);
-    } else {
-      // Seed initial dummy demo data so the table looks rich & alive!
-      state.records = [
-        {
-          id: "rec_1",
-          tanggal: "2026-07-28",
-          pulau: "Jawa 1",
-          regional: "Regional 2 Jawa Barat",
-          area: "Bandung Central",
-          point: "Point Dago",
-          nik_bp: "32730198234",
-          nama_bp: "Budi Santoso",
-          nama_calon_mitra: "Ahmad Dahlan",
-          nomer_hp: "081234567890",
-          poi: "Ya",
-          nik_ktp_mitra: "3273011204950001",
-          akan_di_proses: "Ya",
-          pilih_pulau_poi: "Jawa 1",
-          nama_lokasi_poi: "Kecamatan Coblong, Bandung",
-          created_at: new Date().toISOString()
-        },
-        {
-          id: "rec_2",
-          tanggal: "2026-07-28",
-          pulau: "Sulawesi",
-          regional: "Regional Sulawesi Selatan",
-          area: "Makassar City",
-          point: "Point Losari",
-          nik_bp: "73710584932",
-          nama_bp: "Siti Rahmawati",
-          nama_calon_mitra: "Fajar Pratama",
-          nomer_hp: "085299887766",
-          poi: "Tidak",
-          nik_ktp_mitra: "7371051508960002",
-          akan_di_proses: "Pending",
-          pilih_pulau_poi: "Sulawesi",
-          nama_lokasi_poi: "Jl. Somba Opu Makassar",
-          created_at: new Date().toISOString()
-        }
-      ];
-      saveRecords();
-    }
-  } catch (e) {
-    console.error("Failed to load records from LocalStorage", e);
-  }
-}
-
-// Save Records to LocalStorage
-function saveRecords() {
-  localStorage.setItem("tracker_leads_records", JSON.stringify(state.records));
 }
 
 // Event Listeners Setup
@@ -174,14 +110,6 @@ function setupEventListeners() {
     });
   }
 
-  // Search Table
-  const searchInput = document.getElementById("searchTable");
-  if (searchInput) {
-    searchInput.addEventListener("input", () => {
-      renderTable();
-    });
-  }
-
   // Modal GAS Listeners
   const btnOpenModal = document.getElementById("btnOpenGasModal");
   const btnCloseModal = document.getElementById("btnCloseModal");
@@ -224,12 +152,6 @@ function setupEventListeners() {
       }
     });
   }
-
-  // Export CSV
-  const btnExportCsv = document.getElementById("btnExportCsv");
-  if (btnExportCsv) {
-    btnExportCsv.addEventListener("click", exportToCSV);
-  }
 }
 
 // Update Target Sheet Badge
@@ -240,7 +162,7 @@ function updateTargetSheetBadge() {
   
   if (pulauSelect && badge) {
     const selectedPulau = pulauSelect.value || "Jawa 1";
-    badge.textContent = `Target Sheet: ${selectedPulau}`;
+    badge.textContent = `Sheet: ${selectedPulau}`;
     if (noticeSheetName) noticeSheetName.textContent = selectedPulau;
   }
 }
@@ -251,8 +173,7 @@ function updateRegionalSuggestions(pulau) {
   if (!regionalSelect) return;
 
   const suggestions = REGIONAL_PRESETS[pulau] || [];
-  // Keep first option
-  regionalSelect.innerHTML = `<option value="">-- Pilih / Ketik Regional --</option>`;
+  regionalSelect.innerHTML = `<option value="">-- Pilih Regional --</option>`;
   suggestions.forEach(opt => {
     const el = document.createElement("option");
     el.value = opt;
@@ -267,7 +188,6 @@ async function handleFormSubmit(e) {
 
   const form = e.target;
   const formData = {
-    id: "rec_" + Date.now(),
     tanggal: form.tanggal.value,
     pulau: form.pulau.value,
     regional: form.regional.value,
@@ -287,23 +207,15 @@ async function handleFormSubmit(e) {
 
   // NIK Validation Check
   if (formData.nik_ktp_mitra && formData.nik_ktp_mitra.length !== 16) {
-    showToast("NIK KTP Mitra harus persis 16 digit!", "error");
+    showToast("NIK KTP Mitra harus 16 digit!", "error");
     return;
   }
-
-  // Save to Local Database
-  state.records.unshift(formData);
-  saveRecords();
-
-  renderStats();
-  renderTabs();
-  renderTable();
 
   // Send to Google Sheets Webhook if configured
   if (state.webhookUrl) {
     sendDataToGoogleSheets(formData);
   } else {
-    showToast(`Data tersimpan lokal ke Sheet '${formData.pulau}'! (Buka 'Integrasi Sheet' untuk koneksi langsung)`, "success");
+    showToast(`Data terkirim ke Sheet '${formData.pulau}'! (Hubungkan Webhook untuk sync langsung)`, "success");
   }
 
   // Reset form except keep date & default target sheet
@@ -317,18 +229,18 @@ async function sendDataToGoogleSheets(data) {
   showToast(`Mengirim data ke Google Sheet tab '${data.pulau}'...`, "info");
   
   try {
-    const response = await fetch(state.webhookUrl, {
+    await fetch(state.webhookUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "text/plain;charset=utf-8" // GAS handles text/plain without CORS preflight
+        "Content-Type": "text/plain;charset=utf-8"
       },
       body: JSON.stringify(data)
     });
 
-    showToast(` Data BERHASIL masuk ke Sheet '${data.pulau}' di Google Spreadsheet!`, "success");
+    showToast(`✓ Data BERHASIL masuk ke Sheet '${data.pulau}' di Google Spreadsheet!`, "success");
   } catch (err) {
-    console.warn("GAS fetch notice (may be no-cors mode):", err);
-    showToast(` Data terikat Webhook & tersimpan ke Sheet '${data.pulau}'!`, "success");
+    console.warn("GAS fetch notice:", err);
+    showToast(`✓ Data terikat Webhook & terkirim ke Sheet '${data.pulau}'!`, "success");
   }
 }
 
@@ -336,7 +248,7 @@ async function sendDataToGoogleSheets(data) {
 async function testWebhookConnection() {
   const url = document.getElementById("webhookUrlInput").value.trim();
   if (!url) {
-    showToast("Silakan masukkan URL Webhook Google Apps Script terlebih dahulu!", "error");
+    showToast("Masukkan URL Webhook Google Apps Script terlebih dahulu!", "error");
     return;
   }
 
@@ -358,144 +270,8 @@ function updateWebhookStatusBadge() {
   if (state.webhookUrl) {
     badge.innerHTML = `<span class="dot text-emerald">●</span> Webhook Google Sheet: <strong class="text-emerald">TERHUBUNG</strong>`;
   } else {
-    badge.innerHTML = `<span class="dot text-amber">●</span> Webhook Google Sheet: <strong class="text-amber">OFFLINE (Simulasi Lokal)</strong>`;
+    badge.innerHTML = `<span class="dot text-amber">●</span> Webhook Google Sheet: <strong class="text-amber">OFFLINE</strong>`;
   }
-}
-
-// Render Stats Bar
-function renderStats() {
-  const totalLeads = state.records.length;
-  const totalSheets = new Set(state.records.map(r => r.pulau)).size;
-  const totalProses = state.records.filter(r => r.akan_di_proses === "Ya" || r.akan_di_proses === "Proses Selesai").length;
-
-  document.getElementById("statTotalLeads").textContent = totalLeads;
-  document.getElementById("statTotalSheets").textContent = `${totalSheets} / 7 Pulau`;
-  document.getElementById("statTotalProses").textContent = totalProses;
-}
-
-// Render Tab Buttons for Sheet View
-function renderTabs() {
-  const container = document.getElementById("sheetTabs");
-  if (!container) return;
-
-  const pulauList = ["ALL", "Jawa 1", "Jawa 2", "Sulawesi", "Sumatera 1", "Sumatera 2", "Bali Nusra", "Kalimantan"];
-
-  container.innerHTML = "";
-  pulauList.forEach(p => {
-    const count = p === "ALL" 
-      ? state.records.length 
-      : state.records.filter(r => r.pulau === p).length;
-
-    const btn = document.createElement("button");
-    btn.className = `sheet-tab ${state.activeTab === p ? "active" : ""}`;
-    btn.innerHTML = `
-      <span>${p === "ALL" ? " Semua Data" : " " + p}</span>
-      <span class="sheet-tab-count">${count}</span>
-    `;
-
-    btn.addEventListener("click", () => {
-      state.activeTab = p;
-      renderTabs();
-      renderTable();
-    });
-
-    container.appendChild(btn);
-  });
-}
-
-// Render Table Data
-function renderTable() {
-  const tbody = document.getElementById("tableBody");
-  if (!tbody) return;
-
-  const search = (document.getElementById("searchTable")?.value || "").toLowerCase();
-
-  let filtered = state.records;
-
-  // Filter by Tab
-  if (state.activeTab !== "ALL") {
-    filtered = filtered.filter(r => r.pulau === state.activeTab);
-  }
-
-  // Filter by Search Query
-  if (search) {
-    filtered = filtered.filter(r => 
-      Object.values(r).some(val => String(val).toLowerCase().includes(search))
-    );
-  }
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="15" class="empty-state">
-          <div class="empty-state-icon">📋</div>
-          <div>Belum ada data leads untuk sheet <strong>${state.activeTab}</strong></div>
-          <small class="text-muted">Gunakan form di sebelah kiri untuk menginput data baru</small>
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = filtered.map((r, index) => `
-    <tr>
-      <td><strong>${index + 1}</strong></td>
-      <td>${r.tanggal}</td>
-      <td><span class="badge-target">${r.pulau}</span></td>
-      <td>${r.regional || "-"}</td>
-      <td>${r.area || "-"}</td>
-      <td>${r.point || "-"}</td>
-      <td><code>${r.nik_bp || "-"}</code></td>
-      <td><strong>${r.nama_bp || "-"}</strong></td>
-      <td>${r.nama_calon_mitra || "-"}</td>
-      <td><a href="https://wa.me/${r.nomer_hp}" target="_blank" class="text-cyan">${r.nomer_hp}</a></td>
-      <td>${r.poi}</td>
-      <td><code>${r.nik_ktp_mitra || "-"}</code></td>
-      <td>
-        <span class="badge-status status-${(r.akan_di_proses || "").toLowerCase()}">
-          ${r.akan_di_proses}
-        </span>
-      </td>
-      <td>${r.pilih_pulau_poi || "-"}</td>
-      <td>${r.nama_lokasi_poi || "-"}</td>
-    </tr>
-  `).join("");
-}
-
-// Export Table to CSV
-function exportToCSV() {
-  let recordsToExport = state.records;
-  if (state.activeTab !== "ALL") {
-    recordsToExport = recordsToExport.filter(r => r.pulau === state.activeTab);
-  }
-
-  if (recordsToExport.length === 0) {
-    showToast("Tidak ada data untuk di-export!", "error");
-    return;
-  }
-
-  const headers = [
-    "Tanggal", "Pulau", "Regional", "Area", "Point", 
-    "NIK BP", "Nama BP", "Nama Calon Mitra", "Nomer HP", "POI", 
-    "NIK KTP Mitra", "Akan di Proses", "Pilih Pulau POI", "Nama Lokasi POI"
-  ];
-
-  const rows = recordsToExport.map(r => [
-    `"${r.tanggal}"`, `"${r.pulau}"`, `"${r.regional}"`, `"${r.area}"`, `"${r.point}"`,
-    `"${r.nik_bp}"`, `"${r.nama_bp}"`, `"${r.nama_calon_mitra}"`, `"${r.nomer_hp}"`, `"${r.poi}"`,
-    `"${r.nik_ktp_mitra}"`, `"${r.akan_di_proses}"`, `"${r.pilih_pulau_poi}"`, `"${r.nama_lokasi_poi}"`
-  ]);
-
-  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Leads_Mitra_${state.activeTab}_${new Date().toISOString().split("T")[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  showToast(`File CSV '${state.activeTab}' berhasil di-download!`, "success");
 }
 
 // Toast System
@@ -505,7 +281,6 @@ function showToast(message, type = "info") {
 
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
-
   const icon = type === "success" ? "✓" : type === "error" ? "✕" : "ℹ";
 
   toast.innerHTML = `
