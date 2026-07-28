@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracker Leads New Mitra Per BP - Modern Multi-Sheet Web App</title>
+  <meta name="description" content="Aplikasi Web Form Input Data Leads New Mitra Per BP dengan otomatisasi routing ke Google Sheet per Pulau.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <div class="brand-wrapper">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Leads New Mitra Per BP</h1>
+          <div class="brand-subtitle">Smart Sheet Router & Multi-Pulau Google Sheets Tracker</div>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <div id="webhookStatusBadge" class="sheet-tab">
+          <span class="dot text-amber">●</span> Webhook: Checking...
+        </div>
+        <button id="btnOpenGasModal" class="btn btn-secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Integrasi Google Sheet
+        </button>
+        <a href="https://docs.google.com/spreadsheets/d/1q8RSMvbPEGhSNjY7Vq91B6RZvrNZ7eK966EGiZCbjM0/edit" target="_blank" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Buka Spreadsheet
+        </a>
+      </div>
+    </header>
+
+    <!-- Top KPI Stats Bar -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-info">
+          <div id="statTotalLeads" class="stat-value">0</div>
+          <div class="stat-label">Total Leads Input</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🗺️</div>
+        <div class="stat-info">
+          <div id="statTotalSheets" class="stat-value">0 / 7 Pulau</div>
+          <div class="stat-label">Jumlah Sheet Terisi</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-info">
+          <div id="statTotalProses" class="stat-value">0</div>
+          <div class="stat-label">Mitra Akan di Proses</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔒</div>
+        <div class="stat-info">
+          <div class="stat-value" style="font-size: 1.1rem; color: var(--accent-emerald);">Lock & Auto Sync</div>
+          <div class="stat-label">Safety Lock Concurrent</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Two-Column Layout -->
+    <main class="main-layout">
+
+      <!-- Left Column: Form Input Data -->
+      <section class="glass-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-title-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <div>
+              <h2 class="card-title">Form Input Leads</h2>
+              <p class="input-hint">Isi data calon mitra di bawah ini</p>
+            </div>
+          </div>
+          <span id="targetSheetBadge" class="badge-target">Target Sheet: Jawa 1</span>
+        </div>
+
+        <!-- Sheet Router Notice Banner -->
+        <div class="sheet-router-notice">
+          <span class="icon">🎯</span>
+          <div class="text">
+            Data yang diinput akan otomatis masuk ke Tab Sheet <strong id="noticeSheetName">Jawa 1</strong> di Google Spreadsheet!
+          </div>
+        </div>
+
+        <form id="leadForm">
+
+          <!-- Section 1: Lokasi & Business Partner (BP) -->
+          <div class="form-section">
+            <div class="form-section-title">
+              📍 1. Lokasi & Business Partner (BP)
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="tanggal">Tanggal <span class="required-star">*</span></label>
+                <input type="date" id="tanggal" name="tanggal" class="form-input" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="pulau">Pulau (Sheet Target) <span class="required-star">*</span></label>
+                <select id="pulau" name="pulau" class="form-select" required>
+                  <option value="Jawa 1">Jawa 1</option>
+                  <option value="Jawa 2">Jawa 2</option>
+                  <option value="Sulawesi">Sulawesi</option>
+                  <option value="Sumatera 1">Sumatera 1</option>
+                  <option value="Sumatera 2">Sumatera 2</option>
+                  <option value="Bali Nusra">Bali Nusra</option>
+                  <option value="Kalimantan">Kalimantan</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label" for="regional">Regional <span class="required-star">*</span></label>
+                <select id="regional" name="regional" class="form-select" required>
+                  <option value="">-- Pilih Regional --</option>
+                  <option value="Regional 1 DKI/Banten">Regional 1 DKI/Banten</option>
+                  <option value="Regional 2 Jawa Barat">Regional 2 Jawa Barat</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="area">Area <span class="required-star">*</span></label>
+                <input type="text" id="area" name="area" class="form-input" placeholder="Contoh: Bandung Central" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="point">Point <span class="required-star">*</span></label>
+                <input type="text" id="point" name="point" class="form-input" placeholder="Contoh: Point Dago" required>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="nik_bp">NIK BP <span class="required-star">*</span></label>
+                <input type="text" id="nik_bp" name="nik_bp" class="form-input" placeholder="11 digit NIK BP" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="nama_bp">Nama BP <span class="required-star">*</span></label>
+                <input type="text" id="nama_bp" name="nama_bp" class="form-input" placeholder="Nama Business Partner" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Data Calon Mitra -->
+          <div class="form-section">
+            <div class="form-section-title">
+              👤 2. Data Calon Mitra
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="nama_calon_mitra">Nama Calon Mitra <span class="required-star">*</span></label>
+                <input type="text" id="nama_calon_mitra" name="nama_calon_mitra" class="form-input" placeholder="Nama lengkap calon mitra" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="nomer_hp">Nomer HP (WhatsApp) <span class="required-star">*</span></label>
+                <input type="tel" id="nomer_hp" name="nomer_hp" class="form-input" placeholder="Contoh: 081234567890" required>
+                <span class="input-hint">Otomatis diformat ke 62... saat disimpan</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="nik_ktp_mitra">
+                NIK KTP Mitra (16 Digit) <span class="required-star">*</span>
+              </label>
+              <input type="text" id="nik_ktp_mitra" name="nik_ktp_mitra" class="form-input" maxlength="16" placeholder="Masukkan 16 digit NIK KTP" required>
+              <span id="nikKtpHelper" class="input-hint text-amber">Harus 16 digit angka</span>
+            </div>
+          </div>
+
+          <!-- Section 3: Detail POI & Status Process -->
+          <div class="form-section">
+            <div class="form-section-title">
+              📌 3. Detail POI & Status Proses
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="poi">POI (Point of Interest) <span class="required-star">*</span></label>
+                <select id="poi" name="poi" class="form-select" required>
+                  <option value="Ya">Ya</option>
+                  <option value="Tidak">Tidak</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="akan_di_proses">Akan di Proses <span class="required-star">*</span></label>
+                <select id="akan_di_proses" name="akan_di_proses" class="form-select" required>
+                  <option value="Ya">Ya</option>
+                  <option value="Tidak">Tidak</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Proses Selesai">Proses Selesai</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="pilih_pulau_poi">Pilih Pulau POI <span class="required-star">*</span></label>
+                <select id="pilih_pulau_poi" name="pilih_pulau_poi" class="form-select" required>
+                  <option value="Jawa 1">Jawa 1</option>
+                  <option value="Jawa 2">Jawa 2</option>
+                  <option value="Sulawesi">Sulawesi</option>
+                  <option value="Sumatera 1">Sumatera 1</option>
+                  <option value="Sumatera 2">Sumatera 2</option>
+                  <option value="Bali Nusra">Bali Nusra</option>
+                  <option value="Kalimantan">Kalimantan</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="nama_lokasi_poi">Nama Lokasi POI <span class="required-star">*</span></label>
+                <input type="text" id="nama_lokasi_poi" name="nama_lokasi_poi" class="form-input" placeholder="Detail nama/alamat lokasi POI" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-primary" style="flex: 2; padding: 14px; font-size: 1rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Simpan Data ke Sheet
+            </button>
+            <button type="button" id="btnReset" class="btn btn-secondary" style="flex: 1;">
+              Reset Form
+            </button>
+          </div>
+
+        </form>
+      </section>
+
+
+      <!-- Right Column: Interactive Multi-Sheet Data Table -->
+      <section class="glass-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-title-icon" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            </div>
+            <div>
+              <h2 class="card-title">Spreadsheet Viewer</h2>
+              <p class="input-hint">Filter & lihat data per Tab Sheet Pulau</p>
+            </div>
+          </div>
+
+          <button id="btnExportCsv" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
+
+        <!-- Sheet Tabs Filter -->
+        <div id="sheetTabs" class="sheet-tabs-container">
+          <!-- Dynamic tabs injected by JS -->
+        </div>
+
+        <!-- Table Search Bar -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <input type="text" id="searchTable" class="form-input" placeholder="🔍 Cari berdasarkan Nama BP, Nama Mitra, NIK, No HP..." style="padding: 10px 14px; font-size: 0.85rem;">
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Tanggal</th>
+                <th>Pulau</th>
+                <th>Regional</th>
+                <th>Area</th>
+                <th>Point</th>
+                <th>NIK BP</th>
+                <th>Nama BP</th>
+                <th>Nama Calon Mitra</th>
+                <th>Nomer HP</th>
+                <th>POI</th>
+                <th>NIK KTP</th>
+                <th>Akan di Proses</th>
+                <th>Pulau POI</th>
+                <th>Lokasi POI</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+
+  <!-- MODAL: Google Apps Script Setup & Webhook Settings -->
+  <div id="gasModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <div class="card-title-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <div>
+            <h3 class="card-title">Integrasi Google Apps Script (GAS)</h3>
+            <p class="input-hint">Hubungkan form ini langsung ke file Google Spreadsheet Anda</p>
+          </div>
+        </div>
+        <button id="btnCloseModal" class="btn-icon">✕</button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Step 1: Webhook URL Input -->
+        <div class="form-section">
+          <div class="form-section-title">🔗 1. Masukkan URL Webhook Application Anda</div>
+          <div class="form-group">
+            <label class="form-label" for="webhookUrlInput">Google Apps Script Web App URL</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="webhookUrlInput" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+              <button type="button" id="btnTestWebhook" class="btn btn-secondary">Test Connection</button>
+            </div>
+            <span class="input-hint">Masukkan URL yang didapatkan setelah Deploy Apps Script</span>
+          </div>
+        </div>
+
+        <!-- Step 2: Code Snippet -->
+        <div class="form-section">
+          <div class="form-section-title">📜 2. Kode Google Apps Script (Auto Multi-Sheet)</div>
+          <p class="input-hint">Copy kode di bawah ini dan paste ke Apps Script di Google Sheet Anda:</p>
+          
+          <div class="code-block-wrapper">
+            <button id="btnCopyGasCode" class="btn btn-primary btn-copy-code" style="padding: 4px 10px; font-size: 0.75rem;">📋 Copy Kode</button>
+            <pre id="gasCodeText" class="code-block">function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  try {
+    var doc = SpreadsheetApp.getActiveSpreadsheet();
+    var data = JSON.parse(e.postData.contents);
+    var targetSheetName = data.pulau || "Jawa 1";
+    var sheet = doc.getSheetByName(targetSheetName);
+    
+    if (!sheet) {
+      sheet = doc.insertSheet(targetSheetName);
+      var headers = ["Tanggal", "Pulau", "Regional", "Area", "Point", "NIK BP", "Nama BP", "Nama Calon Mitra", "Nomer HP", "POI", "NIK KTP Mitra", "Akan di Proses", "Pilih Pulau POI", "Nama Lokasi POI"];
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#0f172a").setFontColor("#ffffff");
+    }
+    
+    var rowData = [
+      data.tanggal, data.pulau, data.regional, data.area, data.point,
+      data.nik_bp, data.nama_bp, data.nama_calon_mitra, data.nomer_hp, data.poi,
+      data.nik_ktp_mitra, data.akan_di_proses, data.pilih_pulau_poi, data.nama_lokasi_poi
+    ];
+    sheet.appendRow(rowData);
+    return ContentService.createTextOutput(JSON.stringify({"result": "success", "sheet": targetSheetName})).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}</pre>
+          </div>
+        </div>
+
+        <!-- Step 3: Deployment Instructions -->
+        <div class="form-section">
+          <div class="form-section-title">🚀 3. Langkah Pemasangan 1-Menit</div>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div>Buka Google Spreadsheet Anda: <a href="https://docs.google.com/spreadsheets/d/1q8RSMvbPEGhSNjY7Vq91B6RZvrNZ7eK966EGiZCbjM0/edit" target="_blank" style="color: var(--accent-cyan); font-weight: 600;">[WIP] 08. Tracker Leads New Mitra</a></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div>Klik menu <strong>Ekstensi</strong> -> <strong>Apps Script</strong>. Paste kode di atas.</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div>Klik <strong>Terapkan (Deploy)</strong> -> <strong>Penerapan Baru (New Deployment)</strong> -> Pilih <strong>Aplikasi Web</strong>.</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div>Atur <em>Jalankan sebagai</em>: <strong>Saya (Me)</strong>, & <em>Yang memiliki akses</em>: <strong>Siapa Saja (Anyone)</strong>.</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">5</div>
+              <div>Copy Web App URL dan simpan ke form di atas!</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnSaveWebhook" class="btn btn-primary">Simpan Pengaturan Webhook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
