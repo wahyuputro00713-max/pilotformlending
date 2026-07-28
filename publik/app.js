@@ -1,13 +1,15 @@
 /**
  * ==============================================================================
  * Web Form Logic & Google Sheets Multi-Pulau Integrator
- * Dynamic Master Data from Sheet "Data Pulau" (Pulau -> Regional -> Area -> Point)
+ * Connected to Live Apps Script: https://script.google.com/macros/s/AKfycbyz0m63O-_6kIknUsb71qJ-g1WVelF0Z5JHI4QQT1OEK10afBZ7EQ7Zxd16RqYFl0qdgA/exec
  * ==============================================================================
  */
 
-// Preset Initial Master Data (Matching Sheet "Data Pulau")
+const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyz0m63O-_6kIknUsb71qJ-g1WVelF0Z5JHI4QQT1OEK10afBZ7EQ7Zxd16RqYFl0qdgA/exec";
+
+// Initial Fallback Master Data (Matching Sheet "Data Pulau")
 let MASTER_DATA = [
-  // Bali Nusra (Matching screenshot)
+  // Bali Nusra
   { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Banjar" },
   { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Buleleng" },
   { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Gerokgak" },
@@ -32,7 +34,7 @@ let MASTER_DATA = [
   { pulau: "Bali Nusra", regional: "Bali", area: "Tabanan", point: "Kuta Selatan" },
   { pulau: "Bali Nusra", regional: "Bali", area: "Tabanan", point: "Mengwi" },
   
-  // Default Presets for Other Islands
+  // Other Islands
   { pulau: "Jawa 1", regional: "Regional 1 DKI/Banten", area: "Jakarta Selatan", point: "Kebayoran" },
   { pulau: "Jawa 1", regional: "Regional 2 Jawa Barat", area: "Bandung Central", point: "Dago" },
   { pulau: "Jawa 2", regional: "Regional 3 Jawa Tengah", area: "Semarang City", point: "Simpang Lima" },
@@ -45,7 +47,7 @@ let MASTER_DATA = [
 
 // Application State
 const state = {
-  webhookUrl: localStorage.getItem("leads_webhook_url") || "",
+  webhookUrl: localStorage.getItem("leads_webhook_url") || DEFAULT_WEBHOOK_URL,
   spreadsheetUrl: "https://docs.google.com/spreadsheets/d/1q8RSMvbPEGhSNjY7Vq91B6RZvrNZ7eK966EGiZCbjM0/edit"
 };
 
@@ -57,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchMasterDataFromSheet();
 });
 
-// Set Default Values & Initialize Form Options
+// Set Default Values
 function initDefaults() {
   const dateInput = document.getElementById("tanggal");
   if (dateInput && !dateInput.value) {
@@ -66,7 +68,7 @@ function initDefaults() {
   }
   
   const webhookInput = document.getElementById("webhookUrlInput");
-  if (webhookInput && state.webhookUrl) {
+  if (webhookInput) {
     webhookInput.value = state.webhookUrl;
   }
 
@@ -88,7 +90,7 @@ async function fetchMasterDataFromSheet() {
       showToast(`Master data 'Data Pulau' (${json.data.length} baris) berhasil dimuat dari Google Sheet!`, "success");
     }
   } catch (err) {
-    console.log("Using initial presets for Master Data (Sheet offline / CORS fetch default)");
+    console.log("Using initial presets for Master Data");
   }
 }
 
@@ -135,7 +137,6 @@ function onPulauChanged() {
     regionalSelect.appendChild(opt);
   });
 
-  // Auto-select if only 1 option available
   if (filteredRegionals.length === 1) {
     regionalSelect.value = filteredRegionals[0];
   }
@@ -157,7 +158,7 @@ function onRegionalChanged() {
       .map(item => item.area)
   )];
 
-  areaSelect.innerHTML = `<option value="">-- Pilih / Ketik Area --</option>`;
+  areaSelect.innerHTML = `<option value="">-- Pilih Area --</option>`;
   filteredAreas.forEach(a => {
     const opt = document.createElement("option");
     opt.value = a;
@@ -187,7 +188,7 @@ function onAreaChanged() {
       .map(item => item.point)
   )];
 
-  pointSelect.innerHTML = `<option value="">-- Pilih / Ketik Point --</option>`;
+  pointSelect.innerHTML = `<option value="">-- Pilih Point --</option>`;
   filteredPoints.forEach(pt => {
     const opt = document.createElement("option");
     opt.value = pt;
@@ -341,11 +342,7 @@ async function handleFormSubmit(e) {
     return;
   }
 
-  if (state.webhookUrl) {
-    sendDataToGoogleSheets(formData);
-  } else {
-    showToast(`Data terkirim ke Sheet '${formData.pulau}'! (Hubungkan Webhook untuk sync langsung)`, "success");
-  }
+  sendDataToGoogleSheets(formData);
 
   form.reset();
   initDefaults();
