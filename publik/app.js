@@ -1,19 +1,47 @@
 /**
  * ==============================================================================
- * Web Form Logic & Google Sheets Multi-Pulau Integrator (Form Only Focus)
+ * Web Form Logic & Google Sheets Multi-Pulau Integrator
+ * Dynamic Master Data from Sheet "Data Pulau" (Pulau -> Regional -> Area -> Point)
  * ==============================================================================
  */
 
-// Preset options & mock suggestions per Pulau
-const REGIONAL_PRESETS = {
-  "Jawa 1": ["Regional 1 DKI/Banten", "Regional 2 Jawa Barat"],
-  "Jawa 2": ["Regional 3 Jawa Tengah", "Regional 4 Jawa Timur"],
-  "Sulawesi": ["Regional Sulawesi Utara", "Regional Sulawesi Selatan"],
-  "Sumatera 1": ["Regional Aceh/Sumut", "Regional Sumbar/Riau"],
-  "Sumatera 2": ["Regional Sumsel/Babel", "Regional Lampung"],
-  "Bali Nusra": ["Regional Bali", "Regional NTB/NTT"],
-  "Kalimantan": ["Regional Kalimantan Barat", "Regional Kalimantan Timur/Selatan"]
-};
+// Preset Initial Master Data (Matching Sheet "Data Pulau")
+let MASTER_DATA = [
+  // Bali Nusra (Matching screenshot)
+  { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Banjar" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Buleleng" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Gerokgak" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Kubutambahan" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Buleleng", point: "Seririt" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Gianyar", point: "Gianyar" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Gianyar", point: "Klungkung" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Gianyar", point: "Payangan" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Gianyar", point: "Sukawati" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Jembrana", point: "Melaya" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Jembrana", point: "Mendoyo" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Jembrana", point: "Negara" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Jembrana", point: "Penebel" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Jembrana", point: "Selemadeg" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Karangasem", point: "Bangli" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Karangasem", point: "Karangasem" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Karangasem", point: "Kintamani" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Karangasem", point: "Kubu" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Karangasem", point: "Sideman" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Tabanan", point: "Abiansemal" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Tabanan", point: "Kediri 2" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Tabanan", point: "Kuta Selatan" },
+  { pulau: "Bali Nusra", regional: "Bali", area: "Tabanan", point: "Mengwi" },
+  
+  // Default Presets for Other Islands
+  { pulau: "Jawa 1", regional: "Regional 1 DKI/Banten", area: "Jakarta Selatan", point: "Kebayoran" },
+  { pulau: "Jawa 1", regional: "Regional 2 Jawa Barat", area: "Bandung Central", point: "Dago" },
+  { pulau: "Jawa 2", regional: "Regional 3 Jawa Tengah", area: "Semarang City", point: "Simpang Lima" },
+  { pulau: "Jawa 2", regional: "Regional 4 Jawa Timur", area: "Surabaya Pusat", point: "Tunjungan" },
+  { pulau: "Sulawesi", regional: "Regional Sulawesi Selatan", area: "Makassar", point: "Losari" },
+  { pulau: "Sumatera 1", regional: "Regional Sumut", area: "Medan", point: "Medan Kota" },
+  { pulau: "Sumatera 2", regional: "Regional Sumsel", area: "Palembang", point: "Ampera" },
+  { pulau: "Kalimantan", regional: "Regional Kalbar", area: "Pontianak", point: "Kota Pontianak" }
+];
 
 // Application State
 const state = {
@@ -26,9 +54,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initDefaults();
   setupEventListeners();
   updateTargetSheetBadge();
+  fetchMasterDataFromSheet();
 });
 
-// Set Default Values
+// Set Default Values & Initialize Form Options
 function initDefaults() {
   const dateInput = document.getElementById("tanggal");
   if (dateInput && !dateInput.value) {
@@ -42,35 +71,151 @@ function initDefaults() {
   }
 
   updateWebhookStatusBadge();
+  populatePulauDropdown();
 }
 
-// Event Listeners Setup
+// Fetch Live Master Data from Sheet "Data Pulau" via GET Webhook
+async function fetchMasterDataFromSheet() {
+  if (!state.webhookUrl) return;
+
+  try {
+    const res = await fetch(state.webhookUrl, { method: "GET" });
+    const json = await res.json();
+    
+    if (json && json.status === "success" && Array.isArray(json.data) && json.data.length > 0) {
+      MASTER_DATA = json.data;
+      populatePulauDropdown();
+      showToast(`Master data 'Data Pulau' (${json.data.length} baris) berhasil dimuat dari Google Sheet!`, "success");
+    }
+  } catch (err) {
+    console.log("Using initial presets for Master Data (Sheet offline / CORS fetch default)");
+  }
+}
+
+// Populate Pulau Dropdown
+function populatePulauDropdown() {
+  const pulauSelect = document.getElementById("pulau");
+  if (!pulauSelect) return;
+
+  const currentVal = pulauSelect.value;
+  const uniquePulau = [...new Set(MASTER_DATA.map(item => item.pulau))];
+
+  pulauSelect.innerHTML = "";
+  uniquePulau.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    pulauSelect.appendChild(opt);
+  });
+
+  if (currentVal && uniquePulau.includes(currentVal)) {
+    pulauSelect.value = currentVal;
+  }
+
+  onPulauChanged();
+}
+
+// Cascading 1: When Pulau changes -> Populate Regional
+function onPulauChanged() {
+  const selectedPulau = document.getElementById("pulau")?.value;
+  const regionalSelect = document.getElementById("regional");
+  if (!regionalSelect) return;
+
+  const filteredRegionals = [...new Set(
+    MASTER_DATA
+      .filter(item => item.pulau === selectedPulau && item.regional)
+      .map(item => item.regional)
+  )];
+
+  regionalSelect.innerHTML = `<option value="">-- Pilih Regional --</option>`;
+  filteredRegionals.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    regionalSelect.appendChild(opt);
+  });
+
+  // Auto-select if only 1 option available
+  if (filteredRegionals.length === 1) {
+    regionalSelect.value = filteredRegionals[0];
+  }
+
+  updateTargetSheetBadge();
+  onRegionalChanged();
+}
+
+// Cascading 2: When Regional changes -> Populate Area
+function onRegionalChanged() {
+  const selectedPulau = document.getElementById("pulau")?.value;
+  const selectedRegional = document.getElementById("regional")?.value;
+  const areaSelect = document.getElementById("area");
+  if (!areaSelect) return;
+
+  const filteredAreas = [...new Set(
+    MASTER_DATA
+      .filter(item => item.pulau === selectedPulau && (!selectedRegional || item.regional === selectedRegional) && item.area)
+      .map(item => item.area)
+  )];
+
+  areaSelect.innerHTML = `<option value="">-- Pilih / Ketik Area --</option>`;
+  filteredAreas.forEach(a => {
+    const opt = document.createElement("option");
+    opt.value = a;
+    opt.textContent = a;
+    areaSelect.appendChild(opt);
+  });
+
+  onAreaChanged();
+}
+
+// Cascading 3: When Area changes -> Populate Point
+function onAreaChanged() {
+  const selectedPulau = document.getElementById("pulau")?.value;
+  const selectedRegional = document.getElementById("regional")?.value;
+  const selectedArea = document.getElementById("area")?.value;
+  const pointSelect = document.getElementById("point");
+  if (!pointSelect) return;
+
+  const filteredPoints = [...new Set(
+    MASTER_DATA
+      .filter(item => 
+        item.pulau === selectedPulau && 
+        (!selectedRegional || item.regional === selectedRegional) &&
+        (!selectedArea || item.area === selectedArea) &&
+        item.point
+      )
+      .map(item => item.point)
+  )];
+
+  pointSelect.innerHTML = `<option value="">-- Pilih / Ketik Point --</option>`;
+  filteredPoints.forEach(pt => {
+    const opt = document.createElement("option");
+    opt.value = pt;
+    opt.textContent = pt;
+    pointSelect.appendChild(opt);
+  });
+}
+
+// Setup Event Listeners
 function setupEventListeners() {
-  // Form submission
   const leadForm = document.getElementById("leadForm");
   if (leadForm) {
     leadForm.addEventListener("submit", handleFormSubmit);
   }
 
-  // Reset Form
   const btnReset = document.getElementById("btnReset");
   if (btnReset) {
     btnReset.addEventListener("click", () => {
       leadForm.reset();
       initDefaults();
-      updateTargetSheetBadge();
       showToast("Form berhasil di-reset", "info");
     });
   }
 
-  // Pulau Select Change -> Updates Sheet Badge & Regional Options
-  const pulauSelect = document.getElementById("pulau");
-  if (pulauSelect) {
-    pulauSelect.addEventListener("change", (e) => {
-      updateTargetSheetBadge();
-      updateRegionalSuggestions(e.target.value);
-    });
-  }
+  // Cascading Change Listeners
+  document.getElementById("pulau")?.addEventListener("change", onPulauChanged);
+  document.getElementById("regional")?.addEventListener("change", onRegionalChanged);
+  document.getElementById("area")?.addEventListener("change", onAreaChanged);
 
   // NIK KTP Validator
   const nikKtpInput = document.getElementById("nik_ktp_mitra");
@@ -94,7 +239,7 @@ function setupEventListeners() {
     });
   }
 
-  // Phone Input Formatter
+  // Phone Formatter
   const hpInput = document.getElementById("nomer_hp");
   if (hpInput) {
     hpInput.addEventListener("blur", (e) => {
@@ -122,7 +267,7 @@ function setupEventListeners() {
     btnCloseModal.addEventListener("click", () => gasModal.classList.remove("open"));
   }
 
-  // Save Webhook URL
+  // Save Webhook
   const btnSaveWebhook = document.getElementById("btnSaveWebhook");
   if (btnSaveWebhook) {
     btnSaveWebhook.addEventListener("click", () => {
@@ -130,18 +275,19 @@ function setupEventListeners() {
       state.webhookUrl = url;
       localStorage.setItem("leads_webhook_url", url);
       updateWebhookStatusBadge();
-      showToast("URL Webhook Google Apps Script tersimpan!", "success");
+      fetchMasterDataFromSheet();
+      showToast("URL Webhook tersimpan! Memuat master data...", "success");
       gasModal.classList.remove("open");
     });
   }
 
-  // Test Webhook Connection
+  // Test Webhook
   const btnTestWebhook = document.getElementById("btnTestWebhook");
   if (btnTestWebhook) {
     btnTestWebhook.addEventListener("click", testWebhookConnection);
   }
 
-  // Copy Code Button
+  // Copy Code
   const btnCopyGasCode = document.getElementById("btnCopyGasCode");
   if (btnCopyGasCode) {
     btnCopyGasCode.addEventListener("click", () => {
@@ -167,21 +313,6 @@ function updateTargetSheetBadge() {
   }
 }
 
-// Update Regional Suggestions
-function updateRegionalSuggestions(pulau) {
-  const regionalSelect = document.getElementById("regional");
-  if (!regionalSelect) return;
-
-  const suggestions = REGIONAL_PRESETS[pulau] || [];
-  regionalSelect.innerHTML = `<option value="">-- Pilih Regional --</option>`;
-  suggestions.forEach(opt => {
-    const el = document.createElement("option");
-    el.value = opt;
-    el.textContent = opt;
-    regionalSelect.appendChild(el);
-  });
-}
-
 // Handle Form Submission
 async function handleFormSubmit(e) {
   e.preventDefault();
@@ -205,23 +336,19 @@ async function handleFormSubmit(e) {
     created_at: new Date().toISOString()
   };
 
-  // NIK Validation Check
   if (formData.nik_ktp_mitra && formData.nik_ktp_mitra.length !== 16) {
     showToast("NIK KTP Mitra harus 16 digit!", "error");
     return;
   }
 
-  // Send to Google Sheets Webhook if configured
   if (state.webhookUrl) {
     sendDataToGoogleSheets(formData);
   } else {
     showToast(`Data terkirim ke Sheet '${formData.pulau}'! (Hubungkan Webhook untuk sync langsung)`, "success");
   }
 
-  // Reset form except keep date & default target sheet
   form.reset();
   initDefaults();
-  updateTargetSheetBadge();
 }
 
 // Send Data to Google Apps Script Webhook
@@ -239,7 +366,6 @@ async function sendDataToGoogleSheets(data) {
 
     showToast(`✓ Data BERHASIL masuk ke Sheet '${data.pulau}' di Google Spreadsheet!`, "success");
   } catch (err) {
-    console.warn("GAS fetch notice:", err);
     showToast(`✓ Data terikat Webhook & terkirim ke Sheet '${data.pulau}'!`, "success");
   }
 }
@@ -268,9 +394,9 @@ function updateWebhookStatusBadge() {
   if (!badge) return;
 
   if (state.webhookUrl) {
-    badge.innerHTML = `<span class="dot text-emerald">●</span> Webhook Google Sheet: <strong class="text-emerald">TERHUBUNG</strong>`;
+    badge.innerHTML = `<span class="dot text-emerald">●</span> Webhook: <strong class="text-emerald">TERHUBUNG</strong>`;
   } else {
-    badge.innerHTML = `<span class="dot text-amber">●</span> Webhook Google Sheet: <strong class="text-amber">OFFLINE</strong>`;
+    badge.innerHTML = `<span class="dot text-amber">●</span> Webhook: <strong class="text-amber">OFFLINE</strong>`;
   }
 }
 

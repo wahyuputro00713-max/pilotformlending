@@ -25,7 +25,7 @@
         </div>
         <div>
           <h1 class="brand-title">Form Input Leads New Mitra</h1>
-          <div class="brand-subtitle">Data otomatis tersimpan ke Sheet Pulau di Google Spreadsheet</div>
+          <div class="brand-subtitle">Master Data Pulau, Regional, Area, & Point terikat dari Sheet 'Data Pulau'</div>
         </div>
       </div>
 
@@ -39,7 +39,7 @@
       </div>
     </header>
 
-    <!-- Form Card Utama (Hanya Form Input Sahaja) -->
+    <!-- Form Card Utama -->
     <main class="glass-card-form">
 
       <!-- Target Sheet Notice Banner -->
@@ -53,7 +53,7 @@
 
       <form id="leadForm">
 
-        <!-- SECTION 1: LOKASI & BP -->
+        <!-- SECTION 1: LOKASI & BP (CASCADING DROPDOWNS MATCHING SHEET 'Data Pulau') -->
         <div class="form-section">
           <div class="form-section-header">
             <span class="section-num">1</span>
@@ -85,19 +85,21 @@
               <label class="form-label" for="regional">Regional <span class="required-star">*</span></label>
               <select id="regional" name="regional" class="form-select" required>
                 <option value="">-- Pilih Regional --</option>
-                <option value="Regional 1 DKI/Banten">Regional 1 DKI/Banten</option>
-                <option value="Regional 2 Jawa Barat">Regional 2 Jawa Barat</option>
               </select>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="area">Area <span class="required-star">*</span></label>
-              <input type="text" id="area" name="area" class="form-input" placeholder="Masukkan Area" required>
+              <select id="area" name="area" class="form-select" required>
+                <option value="">-- Pilih Area --</option>
+              </select>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="point">Point <span class="required-star">*</span></label>
-              <input type="text" id="point" name="point" class="form-input" placeholder="Masukkan Point" required>
+              <select id="point" name="point" class="form-select" required>
+                <option value="">-- Pilih Point --</option>
+              </select>
             </div>
           </div>
 
@@ -228,7 +230,7 @@
         <div class="form-section">
           <div class="form-section-header">
             <span class="section-num">2</span>
-            <h4 class="form-section-title">Kode Apps Script Siap Copy</h4>
+            <h4 class="form-section-title">Kode Apps Script Siap Copy (Dynamic 'Data Pulau' Ready)</h4>
           </div>
           <div class="code-block-wrapper">
             <button id="btnCopyGasCode" class="btn btn-primary btn-copy-code">📋 Copy Kode</button>
@@ -259,6 +261,19 @@
     return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": err.toString()})).setMimeType(ContentService.MimeType.JSON);
   } finally {
     lock.releaseLock();
+  }
+}
+
+function doGet(e) {
+  try {
+    var doc = SpreadsheetApp.getActiveSpreadsheet();
+    var masterSheet = doc.getSheetByName("Data Pulau");
+    if (!masterSheet) return ContentService.createTextOutput(JSON.stringify({"status": "error"})).setMimeType(ContentService.MimeType.JSON);
+    var values = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 4).getValues();
+    var listData = values.map(function(v) { return { pulau: String(v[0]).trim(), regional: String(v[1]).trim(), area: String(v[2]).trim(), point: String(v[3]).trim() }; });
+    return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": listData})).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({"status": "error", "error": err.toString()})).setMimeType(ContentService.MimeType.JSON);
   }
 }</pre>
           </div>
